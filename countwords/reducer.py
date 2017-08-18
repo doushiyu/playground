@@ -25,14 +25,15 @@ def reverse_dict(src_dict):
     return rev_dict
 
 if __name__ == '__main__':
-    for grp_dict in mapper('./Catching Fire.txt'):
+    for grp_dict in mapper('C:/Users/sarah/Python/practice/The Hunger Games.'
+                           'txt'):
         reducer(grp_dict)
 
     freq_wrd = reverse_dict(all_dict)
     #pprint.pprint(all_dict)
     #pprint.pprint(freq_wrd)
 
-    x = 10
+    x = 60
     topx = sorted(freq_wrd.keys(), reverse=True)[:x]
     for i in topx:
         print "%s:  \t%s" % (freq_wrd[i], i)

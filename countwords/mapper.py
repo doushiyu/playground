@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import string
+import itertools
 
 MIN_GRP_UPDATE = 20
 
 def normalize_word(wrd):
-    wrd.strip().lower()
+    wrd = wrd.strip().lower()
     if wrd[-1] in string.punctuation:
         wrd = wrd[:-1]
     return wrd
@@ -21,7 +22,6 @@ def line_mapper(line):
         else:
             line_dict[wrd] = 1
     return line_dict
-
 
 def mapper(fpath):
     with open(fpath, 'r') as fobj:
