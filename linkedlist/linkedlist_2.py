@@ -134,17 +134,13 @@ class LList(object):
     def is_loop(self):
         if self._head == None:
             raise LinkedListUnderflow("in is_loop")
-        p = self._head
-        q = p
-        for j in range(self.__len__()):
-            i = self.__len__() - j
-            while p is not None and i > 0:
-                if p.next == q:
-                    return p.next is q
-                i -= 1
-                p = p.next
-            q = q.next
-            p = q
+        slow_p = self._head
+        fast_p = self._head
+        while slow_p and fast_p and fast_p.next:
+            slow_p = slow_p.next
+            fast_p = fast_p.next.next
+            if slow_p == fast_p:
+                    return slow_p is fast_p
         return False
         
 if __name__ == "__main__": 
