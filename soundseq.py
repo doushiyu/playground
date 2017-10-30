@@ -29,8 +29,9 @@ def make_sound(N, seqtype):
     data = concatenate(tones)
     print data
     write(data, filename)
-    data = read(filename)
-    play(filename)
+    # if you don't need to change the sample rate, simply data = read(filename)[0]
+    data, sample_r = read(filename)
+    play(data, sample_rate=sample_r)
 
 if __name__ == '__main__':
     try:
