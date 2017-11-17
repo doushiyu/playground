@@ -61,14 +61,14 @@ def plot_asian_option_price_error(N):
           p = np.array(p, p1)
      figure()
      #plot the N as x axis and errors as y axis
-     plot(N, errors,'b*--', xlabel = 'N simulation', ylabel = 'errors', 
-                    title = 'errors as N increases', 
-                    savefig = 'price_errors.pdf')
      hold('on')
      #plot curve c/sqrt(N), let c be 1, 2 ,3, 4, 5
      for i in xrange(1, 60, 10):
           error_curve = float(i) / np.sqrt(N)
           plot(N, error_curve, legend = '%d/sqtr(N)' % i)
+     plot(N, errors,'b*--', xlabel = 'N simulation', ylabel = 'errors', 
+               title = 'errors as N increases', 
+               savefig = 'price_errors.pdf')
      hold('off')
 
 if __name__ == '__main__':
