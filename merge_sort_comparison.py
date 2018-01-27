@@ -6,7 +6,7 @@ Created on Wed Jan 24 16:00:36 2018
 """
 #from math import floor 
 import os
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Array
 from random import randint, shuffle
 
 #implement merging-------------------------------------------------------------
@@ -60,21 +60,20 @@ def Merge_Sort_Parallelsort(A, p, r):
         Merge(A, p, q, r)
 
 #implemnt merge sort with multithreads
-def P_Merge_Sort(m, A, p, r, B, s):
+def P_Merge_Sort(A, p, r, B, s):
     n = r - p + 1   #compute the length of the array
-    print 'P_M_S(%d):' % os.getpid(), n, r, p, s, A, B
+    print 'P_M_S(%d):' % os.getpid(), n, r, p, s, A, B[:]
     if n == 1:    #base case when the length is 1
         #B.append(A[p])
         B[s] = A[p]
     else: 
-        T = m.list([0] * n)
-        print T
+        T = Array('i', [0] * n)
         #B = A[s:(s + r - p)]
         q = (p + r)//2
         q1 = q - p + 1    #compute the elements in the first array
-        t1 = Process(target=P_Merge_Sort, args=(m, A, p, q, T, 0))
+        t1 = Process(target=P_Merge_Sort, args=(A, p, q, T, 0))
         t1.start()
-        t2 = Process(target=P_Merge_Sort, args=(m, A, q + 1, r, T, q1))
+        t2 = Process(target=P_Merge_Sort, args=(A, q + 1, r, T, q1))
         t2.start()
         print "Joining: ", t1.pid, t2.pid
         t1.join()
@@ -97,10 +96,10 @@ def Binary_Search(x, T, p, r):
 def P_Merge(T, p1, r1, p2, r2, A, p3):
     n1 = r1 - p1 + 1    #compute the length of T[p1..r1]
     n2 = r2 - p2 + 1   #compute the length of T[p2..r2]
-    print 'P_M(%d):' % os.getpid(), T
+    print 'P_M(%d):' % os.getpid(), T[:]
     print 'P_Ma:', r1, p1, n1
     print 'P_Mb:', r2, p2, n2
-    print 'P_Mc:', A, p3
+    print 'P_Mc:', A[:], p3
     if n1 < n2:    #assume n1 >= n2, then the base case is n1 = 0
         #using tuple swap two values
         p1, p2 = p2, p1
@@ -136,13 +135,14 @@ if __name__ == "__main__":
     Merge_Sort(arr1, 0, len(arr)-1)
     print "Merge_Sort:", arr1
 
-    arr2 = manager.list(arr)
-    print arr2
+    #arr2 = manager.list(arr)
+    arr2 = Array('i', arr)
+    print arr2[:]
     Merge_Sort_Parallelsort(arr2, 0, len(arr)-1)
     print "Merge_Sourt_parallelsort:", arr2
 
-    arr3 = manager.list(arr)
-    arr4 = manager.list([0] * len(arr))
-    P_Merge_Sort(manager, arr3, 0, len(arr)-1, arr4, 0)
-    print "P_Merge_Sort:", arr4
+
+    arr4 = Array('i', [0] * len(arr))
+    P_Merge_Sort(arr, 0, len(arr)-1, arr4, 0)
+    print "P_Merge_Sort:", arr4[:]
 
