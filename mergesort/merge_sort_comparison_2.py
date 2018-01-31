@@ -65,7 +65,6 @@ def Merge_Sort_Parallelsort(A, queue, process_num):
 
 #implemnt merge sort with multithreads-----------------------------------------
 def P_Merge_Sort(A, process_num):
-    print A, process_num
     #if len(A) <= 17 or process_num <= 0:
         #C = Merge_Sort(A)
         #return C
@@ -122,7 +121,7 @@ def Binary_Search(A, B):
 #implement multithread merging-------------------------------------------------
 def P_Merge(A, B, C, queue, process_num):
     if len(B) < len(A):
-        P_Merge(B, A, queue, process_num)
+        P_Merge(B, A, C, queue, process_num)
         return
     if len(C) == 1:
         C[0] = A[0]
