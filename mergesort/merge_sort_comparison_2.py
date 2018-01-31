@@ -4,10 +4,12 @@ Created on Wed Jan 24 16:00:36 2018
 
 @author: sarah
 """
-#from math import floor 
+#from math import floor
 from multiprocessing import Process, Array, Queue
+import os
 import time
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 
 #implement merging-------------------------------------------------------------
@@ -40,8 +42,8 @@ def Merge_Sort(A):
     return Merge(left, right)
 
 #implement multithread merge sort without parallel merging
-def Merge_Sort_Parallelsort(A, queue, process_num):
-    if len(A) <= 1 or process_num <= 0:
+def Merge_Sort_Parallelsort(A, queue, proc_log2):
+    if len(A) <= 1 or proc_log2 <= 0:
         queue.put(Merge_Sort(A))
         queue.close()
         return
@@ -49,11 +51,11 @@ def Merge_Sort_Parallelsort(A, queue, process_num):
     queue_right = Queue()
     mid = len(A)//2        #find the median of the array
     #using multithreads to implement recursive merge sort
-    process_left = Process(target = Merge_Sort_Parallelsort, args = (A[:mid], 
-                     queue_left, process_num - 1))
+    process_left = Process(target = Merge_Sort_Parallelsort, args = (A[:mid],
+                     queue_left, proc_log2 - 1))
     process_left.start()
-    process_right = Process(target = Merge_Sort_Parallelsort, args = (A[mid:], 
-                     queue_right, process_num - 1))
+    process_right = Process(target = Merge_Sort_Parallelsort, args = (A[mid:],
+                     queue_right, proc_log2 - 1))
     process_right.start()
     queue.put(Merge(queue_left.get(), queue_right.get()))
     queue.close()
@@ -64,34 +66,38 @@ def Merge_Sort_Parallelsort(A, queue, process_num):
     #using the same merging as the squential merge sort
 
 #implemnt merge sort with multithreads-----------------------------------------
-def P_Merge_Sort(A, process_num):
-    #if len(A) <= 17 or process_num <= 0:
+def P_Merge_Sort(A, proc_log2):
+    #if len(A) <= 17 or proc_log2 <= 0:
         #C = Merge_Sort(A)
         #return C
+    # logging queue, just for logging purpose
+    lq = Queue()
     queue_left = Queue()
     queue_right = Queue()
     mid = len(A)//2        #find the median of the array
-    if mid <= 17 or process_num <= 0:
+    if mid <= 17 or proc_log2 <= 0:
         leftarr = Merge_Sort(A[:mid])
         rightarr = Merge_Sort(A[mid:])
         C = A[:]
         queue_merge = Queue()
-        process_merge = Process(target = P_Merge, args = (leftarr, 
-                         rightarr, C, queue_merge, 3))
+        #print '>%d' % os.getpid(), leftarr, rightarr
+        process_merge = Process(target=P_Merge, args=(leftarr,
+                         rightarr, C, queue_merge, 3, lq))
         process_merge.start()
         C = queue_merge.get()
     else:
         #using multithreads to implement recursive merge sort
-        process_left = Process(target = Merge_Sort_Parallelsort, args = (A[:mid], 
-                         queue_left, process_num - 1))
+        process_left = Process(target=Merge_Sort_Parallelsort, args=(A[:mid],
+                         queue_left, proc_log2 - 1))
         process_left.start()
-        process_right = Process(target = Merge_Sort_Parallelsort, args = (A[mid:], 
-                         queue_right, process_num - 1))
+        process_right = Process(target=Merge_Sort_Parallelsort, args=(A[mid:],
+                         queue_right, proc_log2 - 1))
         process_right.start()
         C = A[:]
         queue_merge = Queue()
-        process_merge = Process(target = P_Merge, args = (queue_left.get(), 
-                         queue_right.get(), C, queue_merge, process_num))
+        ql, qr = queue_left.get(), queue_right.get()
+        #print '>%d' % os.getpid(), ql, qr
+        process_merge = Process(target=P_Merge, args=(ql, qr, C, queue_merge, proc_log2, lq))
         process_merge.start()
         C = queue_merge.get()
         queue_left.close()
@@ -101,8 +107,16 @@ def P_Merge_Sort(A, process_num):
         #sync the multithread process
         process_left.join()
         process_right.join()
-        process_merge.join()
         #using the same merging as the squential merge sort
+    process_merge.join()
+    #N = 0
+    #proc_map = dict()
+    #while not lq.empty():
+    #    ppid, pids, d = lq.get_nowait()
+    #    proc_map[ppid] = d if pids is None else pids
+    #    N += d
+    #print ">>>>>>>>>>", N
+    #import pprint; pprint.pprint(proc_map)
     return C
 
 #using binary search to find the location p2-----------------------------------
@@ -119,56 +133,78 @@ def Binary_Search(A, B):
     return high
 
 #implement multithread merging-------------------------------------------------
-def P_Merge(A, B, C, queue, process_num):
-    if len(B) < len(A):
-        P_Merge(B, A, C, queue, process_num)
+def P_Merge(A, B, C, queue, proc_log2, lq):
+    #print '>>%d' % os.getpid(), A, B, C, queue, proc_log2
+    if len(B) > len(A):
+        P_Merge(B, A, C, queue, proc_log2, lq)
         return
     if len(C) == 1:
         C[0] = A[0]
+        queue.put(C)
+        queue.close()
+        lq.put((os.getpid(), None, 1));lq.close()
+        #print '>>%d(1)--> ' % os.getpid(), C
         return
     if len(A) == 1 and len(B) == 1:
-        if A[0] < B[0]:
+        if A[0] <= B[0]:
             C[0] = A[0]
             C[1] = B[0]
         else:
             C[0] = B[0]
             C[1] = A[0]
-        return
-    if process_num <= 0:
-        queue.put(Merge(A, B))
+        queue.put(C)
         queue.close()
+        lq.put((os.getpid(), None, 2));lq.close()
+        #print '>>%d(2)--> ' % os.getpid(), C
+        return
+    if proc_log2 <= 0:
+        C = Merge(A,B)
+        queue.put(C)
+        #print '>>%d(3)--> ' % os.getpid(), C
+        queue.close()
+        lq.put((os.getpid(), None, len(C)));lq.close()
         return
     mid_A = len(A)//2
     mid_B = Binary_Search(A, B)
-    print mid_A, mid_B
-    process_left = Process(target = P_Merge, 
-                         args = (A[:mid_A], B[:mid_B], C[:(mid_A + mid_B)], 
-                                     queue, process_num - 1))
+    #print '>>%d' % os.getpid(), mid_A, mid_B
+    ql, qr = Queue(), Queue()
+    process_left = Process(target=P_Merge,
+                         args=(A[:mid_A], B[:mid_B], C[:(mid_A + mid_B)],
+                                     ql, proc_log2 - 1, lq))
     process_left.start()
-    process_right = Process(target = P_Merge, 
-                         args = (A[mid_A:], B[mid_B:], C[(mid_A + mid_B):],
-                                     queue, process_num - 1))
+    process_right = Process(target=P_Merge,
+                         args=(A[mid_A:], B[mid_B:], C[(mid_A + mid_B):],
+                                     qr, proc_log2 - 1, lq))
     process_right.start()
-    queue.put(C)
+    cl, cr = ql.get(), qr.get()
+    #print '>>%d' % os.getpid(), cl, cr
         #assume n1 >= n2, then the base case is n1 = 0
         #using tuple swap two values
-        #using binary search to find the location p2 
+        #using binary search to find the location p2
         #using multithreads to implemnt the recursive parallel merging
         #sync the multithread implementations
+    C = cl + cr
+    queue.put(C)
+    #print '>>%d(4)--> ' % os.getpid(), C
     queue.close()
+    lq.put((os.getpid(), (process_left.pid, process_right.pid), 0))
+    lq.close()
     process_left.join()
     process_right.join()
     return
 
 if __name__ == "__main__":
-    arr = list()    #build a list storing the input arrays
-    idx_n = list()      #build a list storing the size of the arrays
-    idx_n = [10* 2 ** n for n in xrange(1)]
+    #idx_n = [10 * 2**n for n in xrange(10)]
+    idx_n = [100000 * n for n in xrange(1, 10, 2)]
+    #idx_n = [1000000]
+    #idx_n = [100]
     aver_t1, aver_t2, aver_t3 = list(), list(), list()
-    q1, q2 = Queue(), Queue()
-    process_num = 3
+    q1 = Queue()
+    max_num_proc = 3
+    proc_log2 = int(math.log(max_num_proc, 2))
     for counter,idx in enumerate(idx_n):
-        arr = list(np.random.randint(0, 101, idx))
+        #arr = list(np.random.randint(0, 101, idx))
+        arr = list(np.random.randint(0, 100001, idx))
         #print "input array:", arr
         timelist1 = list()
         timelist2 = list()
@@ -181,8 +217,8 @@ if __name__ == "__main__":
             end1 = time.time()
             arr2 = arr[:]
             start2 = time.time()
-            p1 = Process(target = Merge_Sort_Parallelsort, 
-                             args = (arr, q1, process_num))
+            p1 = Process(target=Merge_Sort_Parallelsort,
+                    args=(arr, q1, proc_log2))
             p1.start()
             arr2 = q1.get()
             #print "Merge_Sort_Parallel:", arr2[:]
@@ -190,7 +226,7 @@ if __name__ == "__main__":
             end2 = time.time()
             #arr3 = Array('i', arr)
             start3 = time.time()
-            arr3 = P_Merge_Sort(arr, process_num)
+            arr3 = P_Merge_Sort(arr, proc_log2)
             #print "Merge_Sort_Parallel:", arr3[:]
             end3 = time.time()
             timelist1.append(end1 - start1)
@@ -201,15 +237,18 @@ if __name__ == "__main__":
         aver_t3.append(np.average(timelist3))
         print "size %d accomplish" % idx
     print aver_t1, aver_t2, aver_t3, idx_n
-    print arr, arr1, arr2, arr3
+    print '>', arr[:3], '...', arr[-3:], idx_n
+    print '<', arr1[:3], '...', arr1[-3:], aver_t1
+    print '<', arr2[:3], '...', arr2[-3:], aver_t2
+    print '<', arr3[:3], '...', arr3[-3:], aver_t3
     plt.figure(1)
-    plt.plot(aver_t1, idx_n)
+    plt.plot(idx_n, aver_t1)
     plt.hold("on")
     plt.xlabel("size")
     plt.ylabel("time")
     plt.title("merge sorts time efficiency camparison")
-    plt.plot(aver_t2, idx_n)
-    plt.plot(aver_t3, idx_n)
-    #plt.legend("squential merge sort", "merge sort with parallel sort", 
-     #              "parallel merge sort")
+    plt.plot(idx_n, aver_t2)
+    plt.plot(idx_n, aver_t3)
+    plt.legend(["squential merge sort", "merge sort with parallel sort",
+            "parallel merge sort"])
     plt.show()
