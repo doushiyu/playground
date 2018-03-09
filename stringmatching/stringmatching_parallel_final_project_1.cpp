@@ -76,7 +76,8 @@ This provoked a great outcry among the local burgesses;	and a senator of the Emp
 of the Five Hundred which favored the 18 Brumaire, and who wasprovided with a magnificent senatorial office in the vicinity\
 of the town of D----, wrote to M.Bigot de Preameneu,the minister of public worship, a very angry and confidential\
 note on the subject, from which we extract these authentic lines : Expenses of carriage?  What can be done with it in a town of less\
-han four thousand inhabitants Expenses of journeys ? What is the use of these trips, in the first place ? Next, how can the posting be accomplished in thes\jfkajifjoajpfjaoijfkSometimes he dug in his garden; again, he read or wrote.He hadbut one word for both these kinds of\
+han four thousand inhabitants Expenses of journeys ? What is the use of these trips, in the first place ? Next, how can the posting be accomplished in thes\
+Sometimes he dug in his garden; again, he read or wrote.He hadbut one word for both these kinds of\
  toil; he called them gardening.The mind is a garden, said he.Towards mid - day, when the weather was fine, he went forth and tooa stroll in the c\
 ountry or in town, often entering lowly dwellingsHe was seen walking alone, buried in his own thoughts, his eyecast down, supporting himself on\
  his long cane, clad in his waddedpurple garment of silk, which was very warm, wearing purple stockinginside his coarse shoes, and surmou\
@@ -126,7 +127,8 @@ note on the subject, from which we extract these authentic lines : Expenses of c
 han four thousand inhabitants Expenses of journeys ? What is the use of these trips, in the first place ? Next, how can the posting be accomplished in thes\0";
 	int n = strlen(t);
 	//FILE *txtfile;
-	char p[] = "days";
+	//char p[] = "days";
+	char p[] = "great";
 	int m = strlen(p);
 	int numMatches = 4;
 	int i;
@@ -146,7 +148,7 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 	int global_counter;
 	int global_shifts[MAX_TXT_SIZE - MAX_PATTERN_SIZE];
 	int counter;
-	int *shifts;
+	//int *shifts;
 
 	//char t2[100000];
 	MPI_Init(NULL, NULL);
@@ -157,26 +159,30 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 	low_value = BLOCK_LOW(id, num_p, n);
 	high_value = BLOCK_HIGH(id, num_p, n);
 	size = BLOCK_SIZE(id, num_p, n);
+    printf("seaching target: %s\n", p);
+    printf("rank(id): %d, size: %d, n: %d\n", id, num_p, n);
+    printf("[%d]low: %d, high: %d, size: %d\n", id, low_value, high_value, size);
 	counter = 0;
-	shifts = (int*)malloc((size)*sizeof(int));
-	if (shifts == NULL)
-	{
-		printf("Cannot allocate enough memory.");
-		exit(1);
-	}
+	//shifts = (int*)malloc((size)*sizeof(int));
+	int shifts[size];
+	//if (shifts == NULL)
+	//{
+	//	printf("Cannot allocate enough memory.");
+	//	exit(1);
+	//}
 	//fopen_s(&txtfile, "textfile3.txt", "r");
 	//fgets(t2, 100000, (FILE*)txtfile);
-	
+
 	//fclose(txtfile);
-	//for (j = 0; j <= 100; ++j) 
+	//for (j = 0; j <= 100; ++j)
 	//{
 	//printf("%s", t);
 	//printf("%s", t2);
 	//}
-	
+
 	//t[] = "jfkajifjoajpfjaoijfajioopjifajofjiodjfaueyuyepq98iahfhjahfaugfiafuagufgaofa;idf"
 
-	for (i = 0; i <= size - m; i++)
+	for (i = low_value; i <= MIN(high_value, n-m)/* this should handle split case */; i++)
 	{
 		for (j = 0, k = 0; j < m; j++)
 		{
@@ -185,26 +191,33 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 			k++;
 			if (k == m)
 			{
-				shifts[counter] = i;
-				counter++;
+				shifts[id] = ++counter;
+                //printf("[%d]hit at %d\n on counter %d\n", id, i, counter);
 			}
 		}
 	}
 
+    /*
 	for (i = 0; i < num_p; i++)
 	{
-		if (id != 0)
+		if (id == 0)
 		{
-			MPI_Send(&t[low_value], m - 1, MPI_INT, i + 1, 6, MPI_COMM_WORLD);
+            printf("id: %d send t[%d] to %d\n", id, low_value, i+1);
+			//MPI_Send(&t[low_value], m - 1, MPI_INT, i + 1, 6, MPI_COMM_WORLD);
+			MPI_Send(&t[low_value], 1, MPI_INT, i + 1, 6, MPI_COMM_WORLD);
 		}
 		if (id != num_p - 1)
 		{
-			MPI_Recv(&t[high_value + 1], m - 1, MPI_INT, i, 6, MPI_COMM_WORLD, &status);
+			//MPI_Recv(&t[high_value + 1], m - 1, MPI_INT, i, 6, MPI_COMM_WORLD, &status);
+			MPI_Recv(&t[high_value + 1], 1, MPI_INT, i, 6, MPI_COMM_WORLD, &status);
+            printf("id: %d recv t[%d] from %d\n", id, high_value+1, i);
 		}
 
 	}
-
-	for (i = size - m + 1 ; i < 2 * m - 2; i++)
+    */
+    
+    /*
+	for (i = high_value - m + 1 ; i <= MIN(high_value + m, n-m); i++)
 	{
 		for (j = 0, k = 0; j < m; j++)
 			if (t[j + i] != p[j])
@@ -212,27 +225,30 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 			k++;
 			if (k == m)
 			{
-				shifts[counter] = i;
-				counter++;
+				//shifts[counter] = i;
+				shifts[id] = ++counter;
 			}
-		
-	}
+
+	}*/
+
 	printf("proc: %d: found %d matches.\n", id, counter);
 	fflush(stdout);
 	MPI_Reduce(&counter, &global_counter, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-	MPI_Gather(&shifts, size, MPI_INT, &global_shifts, size, MPI_INT, 0, MPI_COMM_WORLD);
-	if (counter == 0) 
+	//MPI_Gather(&shifts, size, MPI_INT, &global_shifts, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	if (counter == 0)
 	{
 		printf("This is no match.");
 		fflush(stdout);
-	} 
+	}
 	else if (!id)
 	{
-		printf("proc: %d: found %d matches.\n", id, global_shifts[0], counter);
+		//printf("proc: %d: found %d matches.\n", id, global_shifts[0], counter);
+		printf("id 0 proc: %d: found %d matches.\n", id, counter);
 		fflush(stdout);
 	}
+    printf("id %d global count: %d\n", id, global_counter);
 	MPI_Finalize();
-	free(shifts);
+	//free(shifts);
     return 0;
 }
 

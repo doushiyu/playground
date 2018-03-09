@@ -8,9 +8,10 @@
 #include "targetver.h"
 
 #include <stdio.h>
-#include <tchar.h>
+//#include <tchar.h>
 #include <stdlib.h>
 
+#define _tprinf wprintf
 
 
 // TODO: reference additional headers your program requires here
