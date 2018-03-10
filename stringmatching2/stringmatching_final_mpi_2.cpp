@@ -17,6 +17,8 @@
 #define BLOCK_SIZE(id,p,n) \
                      (BLOCK_HIGH(id,p,n)-BLOCK_LOW(id,p,n)+1)
 #define BLOCK_OWNER(j,p,n) (((p)*((j)+1)-1)/(n))
+
+
 //const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 int main()
@@ -138,7 +140,8 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 	//char *t;
 	//FILE *txtfile;
 	//char p[] = "days";
-	char p[] = "journeys";
+	char p[] = "opifo8w"; // this will test tmp for -np == 2 and 4
+	//char p[] = "journeys";
 	int m = strlen(p);
 	int numMatches = 4;
 	int i;
@@ -158,10 +161,11 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 	// This variable storing the number of matches found can communicates with all processes
 	int global_counter;
 	// This variable  storing all of the found indeces can communicates with all processes.
-	int global_shifts[MAX_TXT_SIZE - MAX_PATTERN_SIZE];
+    int root_rank = 0;
+	//int global_shifts[MAX_TXT_SIZE - MAX_PATTERN_SIZE] = {0};
 	int counter;  // counter is local variable use to store the number of matches found
 	int *shifts; // Local virable to point to the indeces of the matches
-	char *tmp;  // It is used to point to the m-1 characters in pattern p
+	//char *tmp;  // It is used to point to the m-1 characters in pattern p
 	int err1;
 	int err2;
 	//char t2[100000];
@@ -181,7 +185,7 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 	printf("[%d]low: %d, high: %d, size: %d\n", id, low_value, high_value, size);
 	fflush(stdout);
 	counter = 0;
-	shifts = (int*)malloc((size)*sizeof(int));
+	shifts = (int*)malloc((n-m+1)*sizeof(int));
 	if (shifts == NULL)
 	{
 		printf("Cannot allocate enough memory:1.");
@@ -202,33 +206,39 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 
 
 	//r1 = strncpy_s(t, size, &global_t[low_value], size);
-
-	for (i = low_value; i <= high_value; i++)
+	for (i = low_value; i <= high_value - m + 1; i++)
 	{
-		for (j = 0, k = 0; j < m; j++)
-		{
-			if (_stricmp(&t[j+i], &p[j]) != 0)
-				break;
-			k++;
-			if (k == m)
-			{
-				shifts[counter++] = i;
-				//printf("[%d]hit at %d\n on counter %d\n", id, i, counter);
-			}
-		}
+        char sub_t[MAX_PATTERN_SIZE+1] = {0};
+        memcpy(sub_t, t+i, m);
+        //printf("sub_t: %s\n", sub_t);
+        //sub_t[m] = '\0';
+		if (!_stricmp(sub_t, p)) {
+			shifts[counter++] = i;
+            printf("[%d]Matching at %d, %s, %s\n", id, i, sub_t, p);
+        }
+			//if (!_stricmp(&t[j+i], p))
+			//if (_stricmp(&t[j+i], &p[j]) != 0)
+			//	break;
+			//k++;
+			//if (k == m)
+			//{
+			//	shifts[counter++] = i;
+			//	//printf("[%d]hit at %d\n on counter %d\n", id, i, counter);
+			//}
 	}
 
 	if (id != 0)
 	{
 		
-		printf("id: %d send t[%d] to %d\n", id, low_value, id-1);
+		printf("id: %d send t[%d]'%.*s' to %d\n", id, low_value, m-1, t+low_value, id-1);
 		fflush(stdout);
 		//MPI_Send(&t[low_value], m - 1, MPI_INT, i + 1, 6, MPI_COMM_WORLD);
 		MPI_Send(&t[low_value], m - 1, MPI_BYTE, id - 1, 6, MPI_COMM_WORLD);
 	}
+    char tmp[2*MAX_PATTERN_SIZE] = {0};
 	if (id != num_p - 1)
 	{
-		tmp = (char*)malloc(sizeof(2 * m - 1));
+		//tmp = (char*)malloc(sizeof(2 * m - 1));
 		if (shifts == NULL)
 		{
 			printf("Cannot allocate enough memory:2.");
@@ -238,32 +248,44 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 		printf("id: %d recv tmp[%d] from %d\n", id, m - 1, id + 1);
 		fflush(stdout);
 		//MPI_Recv(&t[high_value + 1], m - 1, MPI_INT, i, 6, MPI_COMM_WORLD, &status);
+		//MPI_Recv(&tmp[m-1], m - 1, MPI_BYTE, id + 1, 6, MPI_COMM_WORLD, &status);
+        memcpy(tmp, &t[high_value-m+2], m-1);
 		MPI_Recv(&tmp[m-1], m - 1, MPI_BYTE, id + 1, 6, MPI_COMM_WORLD, &status);
-		
+		tmp[2*m-2] = '\0';
+        printf("[%d]tmp: %s\n", id, tmp);
 	}
 	//MPI_Barrier(MPI_COMM_WORLD);
 	
-	err1 = strncpy_s(tmp, 2*m-1, &t[high_value-m+1],m-1);
-	tmp[2 * m - 2] = '\0';
+	//err1 = strncpy_s(tmp, 2*m-1, &t[high_value-m+1],m-1);
+	//tmp[2 * m - 2] = '\0';
+    //printf("[%d]tmp: %s\n", id, tmp);
+    // now search tmp
 	for (i = 0 ; i < m-1; i++)
 	{
-		for (j = 0, k = 0; j < m; j++)
-		{
-			if (_stricmp(&t[j + i], &p[j]) != 0)
-				break;
-			k++;
-			if (k == m)
-				shifts[counter++] = high_value - m + 1 + i;
-		}
+        char sub_tmp[MAX_PATTERN_SIZE+1] = {0};
+        memcpy(sub_tmp, tmp+i, m);
+	    if (!_stricmp(sub_tmp, p)) {
+	    	shifts[counter++] = high_value - m + 2 + i;
+            printf("傻媳妇儿 %d\n", shifts[counter-1]);
+        }
 	}
 	
 
 	printf("proc: %d: found %d matches.\n", id, counter);
 	fflush(stdout);
-	printf("proc: %d the first match at %d", id, *shifts);
+	printf("proc: %d the first match at %d\n", id, *shifts);
 	fflush(stdout);
 	MPI_Reduce(&counter, &global_counter, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-	MPI_Gather(&shifts, counter, MPI_BYTE, &global_shifts[(int)size/m], counter, MPI_BYTE, 0, MPI_COMM_WORLD);
+	//MPI_Gather(&shifts, counter, MPI_BYTE, &global_shifts[(int)size/m], counter, MPI_BYTE, 0, MPI_COMM_WORLD);
+    for (i = 0; i < n-m+1; ++i) {
+        if (shifts[i] != 0)
+            printf("[%d]shifts[%d]: offset: %d\n", id, i, shifts[i]);
+    }
+    printf("[%d]Gather: %d results from shifts at %d\n", id, counter, id*size);
+    int* recv_buf = NULL;
+    if (id == root_rank)
+        recv_buf = shifts;
+	MPI_Gather(shifts, 10, MPI_INT, recv_buf, 10, MPI_INT, root_rank, MPI_COMM_WORLD);
 	if (counter == 0)
 	{
 		printf("This is no match.");
@@ -275,12 +297,18 @@ han four thousand inhabitants Expenses of journeys ? What is the use of these tr
 		printf("proc: %d: found %d matches.\n", id, counter);
 		fflush(stdout);
 	}
-	printf("id %d global count: %d\n", id, global_counter);
-	fflush(stdout);
-	free(shifts);
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Finalize();
-	free(t);
+	free(shifts);
+	//free(t);
+    if (id == root_rank) {
+	    printf("id %d global count: %d\n", id, global_counter);
+	    fflush(stdout);
+        for (i = 0; i < MAX_TXT_SIZE - MAX_PATTERN_SIZE; ++i) {
+            if (shifts[i] != 0)
+                printf("[%d]shifts[%d]: offset: %d, %.*s\n", id, i, shifts[i], m, &t[shifts[i]]);
+        }
+    }
 	return 0;
 }
 
